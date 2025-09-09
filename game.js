@@ -120,6 +120,13 @@ class EnergyQuestGame {
 
         this.assets = new Map();
         this.audioManager = new AudioManager();
+        this.shaderManager = new ShaderManager();
+        this.physicsEngine = new PhysicsEngine();
+        this.postProcessing = null;
+        this.uiSystem = null;
+        this.performanceManager = null;
+        this.effectsManager = null;
+        this.inputSystem = new InputSystem();
         
         this.init();
     }
@@ -686,11 +693,21 @@ class EnergyQuestGame {
         );
 
         if (isCorrect) {
-            // Turn on the lamp
+            // Turn on the lamp with advanced shader
             if (this.cableComponents && this.cableComponents.lamp) {
                 this.cableComponents.lamp.userData.isOn = true;
-                this.cableComponents.lamp.material.emissiveIntensity = 0.5;
-                this.cableComponents.lamp.material.emissive.setHex(0xffff00);
+                
+                // Update electric shader intensity
+                if (this.cableComponents.lamp.material.uniforms.intensity) {
+                    this.cableComponents.lamp.material.uniforms.intensity.value = 1.0;
+                }
+                
+                // Create electrical field around lamp
+                this.physicsEngine.createElectricalField(
+                    { x: 0, y: 0, z: 0 },
+                    2.0,
+                    50.0
+                );
             }
             
             this.audioManager.playSuccess();
@@ -1218,11 +1235,28 @@ class EnergyQuestGame {
             this.camera = new THREE.PerspectiveCamera(75, 1600/720, 0.1, 1000);
             this.renderer = new THREE.WebGLRenderer({ 
                 canvas: document.getElementById('game-canvas'),
-                antialias: true 
+                antialias: true,
+                powerPreference: "high-performance"
             });
             this.renderer.setSize(1600, 720);
             this.renderer.shadowMap.enabled = true;
             this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            this.renderer.outputEncoding = THREE.sRGBEncoding;
+            this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            this.renderer.toneMappingExposure = 1.0;
+            
+            // Setup post-processing
+            this.postProcessing = new PostProcessingPipeline(this.renderer, this.scene, this.camera);
+            
+            // Setup UI system
+            this.uiSystem = new UISystem(this.renderer, this.camera);
+            this.scene.add(this.uiSystem.uiPlane);
+            
+            // Setup performance manager
+            this.performanceManager = new PerformanceManager(this.renderer, this.scene, this.camera);
+            
+            // Setup effects manager
+            this.effectsManager = new EffectsManager(this.scene, this.camera, this.renderer);
         }
 
         // Add house model to background
@@ -1284,12 +1318,25 @@ class EnergyQuestGame {
     }
 
     setupInteractiveCableComponents() {
-        // Create interactive battery (+)
+        // Create interactive battery (+) with advanced shader
         const batteryGeometry = new THREE.BoxGeometry(0.5, 0.8, 0.3);
-        const batteryMaterial = new THREE.MeshPhongMaterial({ color: 0x4ecdc4 });
+        const batteryMaterial = this.shaderManager.createMaterial('emissive', {
+            color: { value: new THREE.Color(0x4ecdc4) },
+            intensity: { value: 1.0 },
+            pulseSpeed: { value: 2.0 }
+        });
         const batteryPlus = new THREE.Mesh(batteryGeometry, batteryMaterial);
         batteryPlus.position.set(-2, 0, 0);
         batteryPlus.userData.componentType = 'battery+';
+        
+        // Add physics body
+        const physicsBody = this.physicsEngine.createDynamicBody(
+            batteryGeometry, 
+            { x: -2, y: 0, z: 0 }, 
+            1, 
+            'electrical'
+        );
+        batteryPlus.userData.physicsBody = physicsBody;
         
         this.addInteractiveObject(batteryPlus, {
             type: 'cable_component',
@@ -1299,12 +1346,25 @@ class EnergyQuestGame {
         });
         this.scene.add(batteryPlus);
 
-        // Create interactive switch
+        // Create interactive switch with metal material
         const switchGeometry = new THREE.CylinderGeometry(0.2, 0.2, 0.1, 8);
-        const switchMaterial = new THREE.MeshPhongMaterial({ color: 0x666666 });
+        const switchMaterial = this.shaderManager.createMaterial('pbr', {
+            color: { value: new THREE.Color(0x666666) },
+            metalness: { value: 0.8 },
+            roughness: { value: 0.2 }
+        });
         const switchComponent = new THREE.Mesh(switchGeometry, switchMaterial);
         switchComponent.position.set(-1, 0, 0);
         switchComponent.userData.componentType = 'switch';
+        
+        // Add physics body
+        const switchPhysicsBody = this.physicsEngine.createDynamicBody(
+            switchGeometry, 
+            { x: -1, y: 0, z: 0 }, 
+            0.5, 
+            'metal'
+        );
+        switchComponent.userData.physicsBody = switchPhysicsBody;
         
         this.addInteractiveObject(switchComponent, {
             type: 'cable_component',
@@ -1314,17 +1374,26 @@ class EnergyQuestGame {
         });
         this.scene.add(switchComponent);
 
-        // Create interactive lamp
+        // Create interactive lamp with electric shader
         const lampGeometry = new THREE.SphereGeometry(0.3, 16, 16);
-        const lampMaterial = new THREE.MeshPhongMaterial({ 
-            color: 0xffff00,
-            emissive: 0x000000,
-            emissiveIntensity: 0
+        const lampMaterial = this.shaderManager.createMaterial('electric', {
+            color: { value: new THREE.Color(0xffff00) },
+            intensity: { value: 0.0 },
+            speed: { value: 5.0 }
         });
         const lampComponent = new THREE.Mesh(lampGeometry, lampMaterial);
         lampComponent.position.set(0, 0, 0);
         lampComponent.userData.componentType = 'lamp';
         lampComponent.userData.isOn = false;
+        
+        // Add physics body
+        const lampPhysicsBody = this.physicsEngine.createDynamicBody(
+            lampGeometry, 
+            { x: 0, y: 0, z: 0 }, 
+            0.3, 
+            'electrical'
+        );
+        lampComponent.userData.physicsBody = lampPhysicsBody;
         
         this.addInteractiveObject(lampComponent, {
             type: 'cable_component',
@@ -1334,10 +1403,24 @@ class EnergyQuestGame {
         });
         this.scene.add(lampComponent);
 
-        // Create interactive battery (-)
-        const batteryMinus = new THREE.Mesh(batteryGeometry, batteryMaterial);
+        // Create interactive battery (-) with emissive shader
+        const batteryMinusMaterial = this.shaderManager.createMaterial('emissive', {
+            color: { value: new THREE.Color(0x4ecdc4) },
+            intensity: { value: 0.5 },
+            pulseSpeed: { value: 1.5 }
+        });
+        const batteryMinus = new THREE.Mesh(batteryGeometry, batteryMinusMaterial);
         batteryMinus.position.set(1, 0, 0);
         batteryMinus.userData.componentType = 'battery-';
+        
+        // Add physics body
+        const batteryMinusPhysicsBody = this.physicsEngine.createDynamicBody(
+            batteryGeometry, 
+            { x: 1, y: 0, z: 0 }, 
+            1, 
+            'electrical'
+        );
+        batteryMinus.userData.physicsBody = batteryMinusPhysicsBody;
         
         this.addInteractiveObject(batteryMinus, {
             type: 'cable_component',
@@ -2278,8 +2361,12 @@ class EnergyQuestGame {
         if (this.renderer && this.scene && this.camera) {
             const deltaTime = this.clock.getDelta();
             
+            // Update input system
+            this.inputSystem.update();
+            
             // Update physics
-            this.physicsWorld.update(deltaTime);
+            this.physicsEngine.update(deltaTime);
+            this.physicsEngine.updateElectricalFields();
             
             // Update animations
             this.updateAnimations(deltaTime);
@@ -2290,6 +2377,25 @@ class EnergyQuestGame {
             // Update dynamic lighting
             this.updateDynamicLighting(deltaTime);
             
+            // Update shaders
+            this.updateShaders(deltaTime);
+            
+            // Update effects
+            if (this.effectsManager) {
+                this.effectsManager.update(deltaTime);
+            }
+            
+            // Update performance
+            if (this.performanceManager) {
+                this.performanceManager.update();
+            }
+            
+            // Update UI system
+            if (this.uiSystem) {
+                this.uiSystem.updateAnimations();
+                this.uiSystem.render();
+            }
+            
             // Update camera controls
             if (this.controls) {
                 this.controls.update();
@@ -2298,9 +2404,86 @@ class EnergyQuestGame {
             // Update dragged objects
             this.updateDraggedObjects();
             
-            // Render scene
-            this.renderer.render(this.scene, this.camera);
+            // Handle input
+            this.handleInput();
+            
+            // Render with post-processing
+            if (this.postProcessing) {
+                this.postProcessing.render();
+            } else {
+                this.renderer.render(this.scene, this.camera);
+            }
         }
+    }
+
+    handleInput() {
+        // Handle keyboard input
+        if (this.inputSystem.getInputActionDown('interact')) {
+            this.handleClick();
+        }
+        
+        if (this.inputSystem.getInputActionDown('pause')) {
+            this.togglePause();
+        }
+        
+        // Handle gamepad input
+        if (this.inputSystem.gamepad.connected) {
+            if (this.inputSystem.getGamepadButtonDown(0)) { // A button
+                this.handleClick();
+            }
+            
+            if (this.inputSystem.getGamepadButtonDown(1)) { // B button
+                this.togglePause();
+            }
+            
+            // Camera movement with right stick
+            const cameraInput = this.inputSystem.getCameraInput();
+            if (this.controls && cameraInput.length() > 0.1) {
+                this.controls.rotate(cameraInput.x * 0.01, cameraInput.y * 0.01);
+            }
+        }
+        
+        // Handle touch input
+        this.inputSystem.touch.touches.forEach((touchState, touchId) => {
+            if (touchState.pressed) {
+                this.handleTouch(touchState.position, touchId);
+            }
+        });
+    }
+
+    handleTouch(position, touchId) {
+        // Convert touch position to 3D coordinates
+        const rect = this.renderer.domElement.getBoundingClientRect();
+        this.mouse.x = ((position.x - rect.left) / rect.width) * 2 - 1;
+        this.mouse.y = -((position.y - rect.top) / rect.height) * 2 + 1;
+        
+        this.raycaster.setFromCamera(this.mouse, this.camera);
+        this.handleClick();
+    }
+
+    togglePause() {
+        // Toggle game pause state
+        if (this.gamePaused) {
+            this.resumeGame();
+        } else {
+            this.pauseGame();
+        }
+    }
+
+    pauseGame() {
+        this.gamePaused = true;
+        this.showFeedback('Game Paused', 'info');
+    }
+
+    resumeGame() {
+        this.gamePaused = false;
+        this.showFeedback('Game Resumed', 'info');
+    }
+
+    updateShaders(deltaTime) {
+        this.shaderManager.materials.forEach(material => {
+            this.shaderManager.animateMaterial(material, deltaTime);
+        });
     }
 
     updateAnimations(deltaTime) {
@@ -2384,15 +2567,39 @@ class EnergyQuestGame {
                 // Handle slider dragging
                 this.updateSliderPosition(this.draggedObject, interactiveData);
             } else {
-                // Handle regular object dragging
-                const vector = new THREE.Vector3(this.mouse.x, this.mouse.y, 0.5);
-                vector.unproject(this.camera);
-                
-                const dir = vector.sub(this.camera.position).normalize();
-                const distance = -this.camera.position.z / dir.z;
-                const pos = this.camera.position.clone().add(dir.multiplyScalar(distance));
-                
-                this.draggedObject.position.copy(pos);
+                // Handle physics-based object dragging
+                const physicsBody = this.draggedObject.userData.physicsBody;
+                if (physicsBody) {
+                    const vector = new THREE.Vector3(this.mouse.x, this.mouse.y, 0.5);
+                    vector.unproject(this.camera);
+                    
+                    const dir = vector.sub(this.camera.position).normalize();
+                    const distance = -this.camera.position.z / dir.z;
+                    const pos = this.camera.position.clone().add(dir.multiplyScalar(distance));
+                    
+                    // Apply force to physics body
+                    const currentPos = this.physicsEngine.getPosition(physicsBody.id);
+                    const force = {
+                        x: (pos.x - currentPos.x) * 100,
+                        y: (pos.y - currentPos.y) * 100,
+                        z: (pos.z - currentPos.z) * 100
+                    };
+                    
+                    this.physicsEngine.applyForce(physicsBody.id, force);
+                    
+                    // Update visual position
+                    this.draggedObject.position.copy(pos);
+                } else {
+                    // Fallback to direct position update
+                    const vector = new THREE.Vector3(this.mouse.x, this.mouse.y, 0.5);
+                    vector.unproject(this.camera);
+                    
+                    const dir = vector.sub(this.camera.position).normalize();
+                    const distance = -this.camera.position.z / dir.z;
+                    const pos = this.camera.position.clone().add(dir.multiplyScalar(distance));
+                    
+                    this.draggedObject.position.copy(pos);
+                }
             }
             
             // Show drag effect

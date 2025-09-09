@@ -10,7 +10,7 @@ Energy Quest: Misteri Hemat Listrik adalah game edukasi puzzle adventure yang di
 - **Resolusi**: 1600 x 720 px
 - **Engine**: Three.js 3D dengan sistem interaksi yang powerful
 
-## Fitur Interaktif Baru
+## Fitur Unity-Style AAA Game
 - **3D Raycasting**: Klik langsung pada objek 3D untuk berinteraksi
 - **Hover Effects**: Objek menyala dan berpartikel saat di-hover
 - **Drag & Drop**: Seret komponen listrik untuk menghubungkannya
@@ -20,6 +20,17 @@ Energy Quest: Misteri Hemat Listrik adalah game edukasi puzzle adventure yang di
 - **Camera Controls**: Orbit, zoom, dan pan untuk eksplorasi 3D
 - **Smooth Animations**: Animasi halus untuk semua interaksi
 - **Spatial Audio**: Suara 3D yang responsif terhadap interaksi
+
+## Sistem Unity-Style Advanced
+- **Post-Processing Pipeline**: Bloom, SSAO, Color Grading, Vignette, Chromatic Aberration
+- **Advanced Shaders**: PBR, Emissive, Electric, Energy Flow, Hologram, Water
+- **Physics Engine**: Cannon.js dengan collision detection, rigidbodies, constraints
+- **UI System**: Unity-style UI dengan panels, buttons, sliders, animations
+- **Performance Optimization**: LOD system, frustum culling, instancing, batching
+- **Advanced Effects**: Volumetric lighting, screen space reflections, motion blur, depth of field
+- **Input System**: Keyboard, mouse, gamepad, touch dengan input mapping
+- **Animation System**: Keyframe-based animations dengan easing curves
+- **Audio System**: 3D spatial audio dengan reverb dan occlusion
 
 ## Alur Permainan
 
@@ -123,18 +134,32 @@ Buka browser dan akses `http://localhost:port/index.html`
     └── siswa smp/     # Model siswa
 ```
 
-## Kontrol Game
+## Kontrol Game Unity-Style
 - **Mouse**: 
   - Klik untuk berinteraksi dengan objek 3D
   - Hover untuk melihat efek visual
   - Drag & drop untuk menghubungkan komponen
   - Scroll untuk zoom in/out
+- **Keyboard**:
+  - WASD/Arrow Keys: Gerakan kamera
+  - E/Enter: Interaksi dengan objek
+  - Escape: Pause game
+  - Q/Z: Kontrol kamera vertikal
+- **Gamepad**:
+  - Left Stick: Gerakan kamera
+  - Right Stick: Rotasi kamera
+  - A Button: Interaksi
+  - B Button: Pause
+  - Triggers: Zoom in/out
+- **Touch**:
+  - Tap untuk interaksi
+  - Pinch untuk zoom
+  - Drag untuk rotasi kamera
 - **Camera Controls**:
-  - Klik dan drag untuk orbit kamera
-  - Scroll untuk zoom
-  - Right-click dan drag untuk pan
-- **UI**: Tombol-tombol untuk navigasi dan pengaturan
-- **Audio**: Kontrol volume musik dan efek suara
+  - Orbit, zoom, dan pan untuk eksplorasi 3D
+  - Smooth camera transitions
+- **UI**: Unity-style UI dengan animasi dan feedback
+- **Audio**: Kontrol volume musik dan efek suara dengan spatial audio
 
 ## Fitur Edukasi
 1. **Konsep Dasar Listrik**: Rangkaian tertutup, saklar, arus
