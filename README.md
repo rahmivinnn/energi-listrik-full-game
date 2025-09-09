@@ -8,7 +8,18 @@ Energy Quest: Misteri Hemat Listrik adalah game edukasi puzzle adventure yang di
 - **Platform**: Web Browser (HTML5/Three.js)
 - **Target Audiens**: Siswa SMP (usia 12-15 tahun)
 - **Resolusi**: 1600 x 720 px
-- **Engine**: Three.js 3D
+- **Engine**: Three.js 3D dengan sistem interaksi yang powerful
+
+## Fitur Interaktif Baru
+- **3D Raycasting**: Klik langsung pada objek 3D untuk berinteraksi
+- **Hover Effects**: Objek menyala dan berpartikel saat di-hover
+- **Drag & Drop**: Seret komponen listrik untuk menghubungkannya
+- **Real-time Sliders**: Geser slider untuk mengatur konsumsi energi secara langsung
+- **Particle Effects**: Efek partikel untuk listrik, energi, dan percikan
+- **Dynamic Lighting**: Pencahayaan yang berubah sesuai koneksi listrik
+- **Camera Controls**: Orbit, zoom, dan pan untuk eksplorasi 3D
+- **Smooth Animations**: Animasi halus untuk semua interaksi
+- **Spatial Audio**: Suara 3D yang responsif terhadap interaksi
 
 ## Alur Permainan
 
@@ -16,21 +27,29 @@ Energy Quest: Misteri Hemat Listrik adalah game edukasi puzzle adventure yang di
 Animasi pembuka yang memperkenalkan cerita tentang ilmuwan listrik yang hilang secara misterius.
 
 ### 2. Level 1 - Ruang Tamu (Dasar Listrik)
-- **Puzzle Kabel**: Pemain harus menghubungkan komponen listrik dalam urutan yang benar
+- **Puzzle Kabel Interaktif**: Klik dan seret komponen listrik 3D untuk menghubungkannya
+- **Visual Feedback**: Lampu menyala dengan efek partikel saat rangkaian benar
+- **Dynamic Lighting**: Pencahayaan berubah sesuai koneksi listrik
 - **Tujuan**: Menyalakan listrik di ruang tamu
 - **Reward**: Kunci Energi Pertama
 
 ### 3. Level 2 - Dapur (Efisiensi Energi)
-- **Puzzle Efisiensi**: Mengelola peralatan dapur agar Power Meter tetap hijau
+- **Puzzle Efisiensi 3D**: Klik langsung pada peralatan dapur untuk mengontrolnya
+- **Real-time Feedback**: Power Meter berubah secara langsung saat peralatan dinyalakan/matikan
+- **Visual Effects**: Peralatan menyala dengan efek partikel energi
 - **Mekanik**: ON/OFF peralatan listrik dengan konsumsi berbeda
 - **Reward**: Kunci Energi Kedua
 
 ### 4. Level 3 - Laboratorium (Tagihan Listrik)
-- **Simulator Energi**: Mengatur konsumsi listrik agar tidak melebihi batas tagihan
+- **Simulator Energi Interaktif**: Geser slider 3D untuk mengatur konsumsi energi
+- **Real-time Calculation**: Tagihan berubah secara langsung saat slider digeser
+- **Visual Display**: Layar 3D menampilkan tagihan dengan warna yang berubah
 - **Perhitungan**: Menggunakan rumus energi listrik E = P × t / 1000
 - **Reward**: Kunci Energi Ketiga
 
 ### 5. Level 4 - Ruang Bawah Tanah (Evaluasi Final)
+- **Pintu Interaktif**: Klik pada pintu rahasia untuk membuka dengan Kunci Energi
+- **Slot Kunci 3D**: Slot kunci menyala saat Kunci Energi dikumpulkan
 - **Quiz Acak**: Menggunakan algoritma Fisher-Yates Shuffle
 - **Soal**: 10 pertanyaan tentang konsep listrik dan efisiensi energi
 - **Syarat**: Minimal 70% benar untuk lulus
@@ -105,7 +124,15 @@ Buka browser dan akses `http://localhost:port/index.html`
 ```
 
 ## Kontrol Game
-- **Mouse**: Klik untuk berinteraksi dengan puzzle
+- **Mouse**: 
+  - Klik untuk berinteraksi dengan objek 3D
+  - Hover untuk melihat efek visual
+  - Drag & drop untuk menghubungkan komponen
+  - Scroll untuk zoom in/out
+- **Camera Controls**:
+  - Klik dan drag untuk orbit kamera
+  - Scroll untuk zoom
+  - Right-click dan drag untuk pan
 - **UI**: Tombol-tombol untuk navigasi dan pengaturan
 - **Audio**: Kontrol volume musik dan efek suara
 

@@ -86,6 +86,28 @@ class EnergyQuestGame {
         this.renderer = null;
         this.controls = null;
         this.loader = new THREE.GLTFLoader();
+        this.raycaster = new THREE.Raycaster();
+        this.mouse = new THREE.Vector2();
+        
+        // Interactive objects
+        this.interactiveObjects = new Map();
+        this.hoveredObject = null;
+        this.selectedObject = null;
+        this.draggedObject = null;
+        
+        // Physics simulation
+        this.physicsWorld = null;
+        this.physicsBodies = new Map();
+        
+        // Particle systems
+        this.particleSystems = new Map();
+        
+        // Animation system
+        this.animations = new Map();
+        this.clock = new THREE.Clock();
+        
+        // Lighting system
+        this.dynamicLights = new Map();
         
         this.gameData = {
             energyKeys: [false, false, false],
@@ -106,6 +128,9 @@ class EnergyQuestGame {
         this.setupFSM();
         this.setupEventListeners();
         this.setupAudio();
+        this.setupPhysics();
+        this.setupParticleSystems();
+        this.setupAnimationSystem();
         this.loadAssets();
     }
 
@@ -233,11 +258,724 @@ class EnergyQuestGame {
             this.audioManager.playClick();
             this.cancelPuzzle();
         });
+
+        // 3D Interaction Events
+        this.setup3DInteractions();
     }
 
     setupAudio() {
         // Audio is handled by AudioManager class
         this.audioManager.playBackgroundMusic();
+    }
+
+    setupPhysics() {
+        // Simple physics simulation for electrical components
+        this.physicsWorld = {
+            objects: new Map(),
+            gravity: new THREE.Vector3(0, -9.82, 0),
+            update: (deltaTime) => {
+                // Update physics objects
+                this.physicsWorld.objects.forEach((obj, id) => {
+                    if (obj.velocity) {
+                        obj.position.add(obj.velocity.clone().multiplyScalar(deltaTime));
+                        obj.velocity.add(this.physicsWorld.gravity.clone().multiplyScalar(deltaTime));
+                    }
+                });
+            }
+        };
+    }
+
+    setupParticleSystems() {
+        // Create particle systems for different effects
+        this.createElectricParticles();
+        this.createEnergyFlowParticles();
+        this.createSparkParticles();
+    }
+
+    createElectricParticles() {
+        const particleCount = 1000;
+        const particles = new THREE.BufferGeometry();
+        const positions = new Float32Array(particleCount * 3);
+        const colors = new Float32Array(particleCount * 3);
+        const sizes = new Float32Array(particleCount);
+
+        for (let i = 0; i < particleCount; i++) {
+            const i3 = i * 3;
+            positions[i3] = (Math.random() - 0.5) * 10;
+            positions[i3 + 1] = (Math.random() - 0.5) * 10;
+            positions[i3 + 2] = (Math.random() - 0.5) * 10;
+
+            colors[i3] = 0.3 + Math.random() * 0.7; // R
+            colors[i3 + 1] = 0.8 + Math.random() * 0.2; // G
+            colors[i3 + 2] = 0.9 + Math.random() * 0.1; // B
+
+            sizes[i] = Math.random() * 0.5 + 0.1;
+        }
+
+        particles.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        particles.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+        particles.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+
+        const material = new THREE.PointsMaterial({
+            size: 0.1,
+            vertexColors: true,
+            transparent: true,
+            opacity: 0.8,
+            blending: THREE.AdditiveBlending
+        });
+
+        this.electricParticles = new THREE.Points(particles, material);
+        this.particleSystems.set('electric', this.electricParticles);
+    }
+
+    createEnergyFlowParticles() {
+        const particleCount = 200;
+        const particles = new THREE.BufferGeometry();
+        const positions = new Float32Array(particleCount * 3);
+        const colors = new Float32Array(particleCount * 3);
+
+        for (let i = 0; i < particleCount; i++) {
+            const i3 = i * 3;
+            positions[i3] = 0;
+            positions[i3 + 1] = 0;
+            positions[i3 + 2] = 0;
+
+            colors[i3] = 0.2; // R
+            colors[i3 + 1] = 0.9; // G
+            colors[i3 + 2] = 1.0; // B
+        }
+
+        particles.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        particles.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+        const material = new THREE.PointsMaterial({
+            size: 0.2,
+            vertexColors: true,
+            transparent: true,
+            opacity: 0.9,
+            blending: THREE.AdditiveBlending
+        });
+
+        this.energyFlowParticles = new THREE.Points(particles, material);
+        this.particleSystems.set('energyFlow', this.energyFlowParticles);
+    }
+
+    createSparkParticles() {
+        const particleCount = 50;
+        const particles = new THREE.BufferGeometry();
+        const positions = new Float32Array(particleCount * 3);
+        const colors = new Float32Array(particleCount * 3);
+
+        for (let i = 0; i < particleCount; i++) {
+            const i3 = i * 3;
+            positions[i3] = 0;
+            positions[i3 + 1] = 0;
+            positions[i3 + 2] = 0;
+
+            colors[i3] = 1.0; // R
+            colors[i3 + 1] = 0.8; // G
+            colors[i3 + 2] = 0.2; // B
+        }
+
+        particles.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        particles.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+        const material = new THREE.PointsMaterial({
+            size: 0.15,
+            vertexColors: true,
+            transparent: true,
+            opacity: 0.8,
+            blending: THREE.AdditiveBlending
+        });
+
+        this.sparkParticles = new THREE.Points(particles, material);
+        this.particleSystems.set('spark', this.sparkParticles);
+    }
+
+    setupAnimationSystem() {
+        // Animation mixer for smooth transitions
+        this.animationMixer = new THREE.AnimationMixer();
+        this.animations = new Map();
+    }
+
+    setup3DInteractions() {
+        const canvas = document.getElementById('game-canvas');
+        
+        // Mouse events for 3D interaction
+        canvas.addEventListener('mousemove', (event) => {
+            this.onMouseMove(event);
+        });
+
+        canvas.addEventListener('click', (event) => {
+            this.onMouseClick(event);
+        });
+
+        canvas.addEventListener('mousedown', (event) => {
+            this.onMouseDown(event);
+        });
+
+        canvas.addEventListener('mouseup', (event) => {
+            this.onMouseUp(event);
+        });
+
+        // Touch events for mobile
+        canvas.addEventListener('touchstart', (event) => {
+            event.preventDefault();
+            const touch = event.touches[0];
+            this.onMouseDown({ clientX: touch.clientX, clientY: touch.clientY });
+        });
+
+        canvas.addEventListener('touchmove', (event) => {
+            event.preventDefault();
+            const touch = event.touches[0];
+            this.onMouseMove({ clientX: touch.clientX, clientY: touch.clientY });
+        });
+
+        canvas.addEventListener('touchend', (event) => {
+            event.preventDefault();
+            this.onMouseUp(event);
+        });
+    }
+
+    onMouseMove(event) {
+        if (!this.renderer || !this.camera) return;
+
+        const rect = this.renderer.domElement.getBoundingClientRect();
+        this.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+        this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+        // Update raycaster
+        this.raycaster.setFromCamera(this.mouse, this.camera);
+
+        // Check for hover
+        this.checkHover();
+    }
+
+    onMouseClick(event) {
+        if (!this.renderer || !this.camera) return;
+
+        const rect = this.renderer.domElement.getBoundingClientRect();
+        this.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+        this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+        this.raycaster.setFromCamera(this.mouse, this.camera);
+        this.handleClick();
+    }
+
+    onMouseDown(event) {
+        if (!this.renderer || !this.camera) return;
+
+        const rect = this.renderer.domElement.getBoundingClientRect();
+        this.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+        this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+        this.raycaster.setFromCamera(this.mouse, this.camera);
+        this.handleMouseDown();
+    }
+
+    onMouseUp(event) {
+        this.handleMouseUp();
+    }
+
+    checkHover() {
+        const intersects = this.raycaster.intersectObjects(Array.from(this.interactiveObjects.values()));
+        
+        if (intersects.length > 0) {
+            const object = intersects[0].object;
+            
+            if (this.hoveredObject !== object) {
+                // Remove previous hover effect
+                if (this.hoveredObject) {
+                    this.removeHoverEffect(this.hoveredObject);
+                }
+                
+                // Add hover effect to new object
+                this.hoveredObject = object;
+                this.addHoverEffect(object);
+                
+                // Change cursor
+                document.body.style.cursor = 'pointer';
+            }
+        } else {
+            if (this.hoveredObject) {
+                this.removeHoverEffect(this.hoveredObject);
+                this.hoveredObject = null;
+                document.body.style.cursor = 'default';
+            }
+        }
+    }
+
+    handleClick() {
+        const intersects = this.raycaster.intersectObjects(Array.from(this.interactiveObjects.values()));
+        
+        if (intersects.length > 0) {
+            const object = intersects[0].object;
+            const interactiveData = this.getInteractiveData(object);
+            
+            if (interactiveData) {
+                this.audioManager.playClick();
+                this.interactWithObject(object, interactiveData);
+            }
+        }
+    }
+
+    handleMouseDown() {
+        const intersects = this.raycaster.intersectObjects(Array.from(this.interactiveObjects.values()));
+        
+        if (intersects.length > 0) {
+            const object = intersects[0].object;
+            const interactiveData = this.getInteractiveData(object);
+            
+            if (interactiveData && interactiveData.draggable) {
+                this.draggedObject = object;
+                this.startDragging(object);
+            }
+        }
+    }
+
+    handleMouseUp() {
+        if (this.draggedObject) {
+            this.stopDragging(this.draggedObject);
+            this.draggedObject = null;
+        }
+    }
+
+    addInteractiveObject(object, data) {
+        this.interactiveObjects.set(object.uuid, object);
+        object.userData.interactive = data;
+        
+        // Add visual feedback
+        this.addInteractiveVisuals(object);
+    }
+
+    removeInteractiveObject(object) {
+        this.interactiveObjects.delete(object.uuid);
+        delete object.userData.interactive;
+        this.removeInteractiveVisuals(object);
+    }
+
+    getInteractiveData(object) {
+        return object.userData.interactive;
+    }
+
+    addInteractiveVisuals(object) {
+        // Add outline effect
+        const outlineMaterial = new THREE.MeshBasicMaterial({
+            color: 0x4ecdc4,
+            side: THREE.BackSide
+        });
+        
+        const outlineGeometry = object.geometry.clone();
+        outlineGeometry.scale(1.05, 1.05, 1.05);
+        
+        const outline = new THREE.Mesh(outlineGeometry, outlineMaterial);
+        outline.visible = false;
+        outline.userData.isOutline = true;
+        
+        object.add(outline);
+        object.userData.outline = outline;
+    }
+
+    removeInteractiveVisuals(object) {
+        if (object.userData.outline) {
+            object.remove(object.userData.outline);
+            delete object.userData.outline;
+        }
+    }
+
+    addHoverEffect(object) {
+        if (object.userData.outline) {
+            object.userData.outline.visible = true;
+        }
+        
+        // Add glow effect
+        object.userData.originalMaterial = object.material;
+        const glowMaterial = object.material.clone();
+        glowMaterial.emissive = new THREE.Color(0x4ecdc4);
+        glowMaterial.emissiveIntensity = 0.3;
+        object.material = glowMaterial;
+        
+        // Add particle effect
+        this.showParticleEffect(object.position, 'electric');
+    }
+
+    removeHoverEffect(object) {
+        if (object.userData.outline) {
+            object.userData.outline.visible = false;
+        }
+        
+        if (object.userData.originalMaterial) {
+            object.material = object.userData.originalMaterial;
+        }
+    }
+
+    interactWithObject(object, data) {
+        switch (data.type) {
+            case 'cable_component':
+                this.handleCableComponentInteraction(object, data);
+                break;
+            case 'appliance':
+                this.handleApplianceInteraction(object, data);
+                break;
+            case 'simulator':
+                this.handleSimulatorInteraction(object, data);
+                break;
+            case 'slider':
+                this.handleSliderInteraction(object, data);
+                break;
+            case 'door':
+                this.handleDoorInteraction(object, data);
+                break;
+            case 'key_slot':
+                this.handleKeySlotInteraction(object, data);
+                break;
+            default:
+                console.log('Unknown interaction type:', data.type);
+        }
+    }
+
+    handleKeySlotInteraction(object, data) {
+        // Key slot interaction - just show feedback
+        this.showFeedback(`Slot Kunci Energi ${data.keyIndex + 1}`, 'info');
+    }
+
+    handleCableComponentInteraction(object, data) {
+        // Animate the component
+        this.animateObject(object, 'pulse');
+        
+        // Show electrical effect
+        this.showParticleEffect(object.position, 'spark');
+        
+        // Handle cable connection logic
+        if (this.fsm.currentState === GameState.LEVEL_1) {
+            this.handleCableComponentInteraction3D(object, data);
+        }
+    }
+
+    handleCableComponentInteraction3D(object, data) {
+        const componentType = data.componentType;
+        
+        if (this.cableConnections.length === 0 && componentType === 'battery+') {
+            this.cableConnections.push(componentType);
+            this.animateObject(object, 'pulse');
+            this.showParticleEffect(object.position, 'electric');
+            this.audioManager.playElectric();
+        } else if (this.cableConnections.length === 1 && componentType === 'switch') {
+            this.cableConnections.push(componentType);
+            this.animateObject(object, 'toggle');
+            this.showParticleEffect(object.position, 'electric');
+            this.audioManager.playElectric();
+        } else if (this.cableConnections.length === 2 && componentType === 'lamp') {
+            this.cableConnections.push(componentType);
+            this.animateObject(object, 'pulse');
+            this.showParticleEffect(object.position, 'electric');
+            this.audioManager.playElectric();
+        } else if (this.cableConnections.length === 3 && componentType === 'battery-') {
+            this.cableConnections.push(componentType);
+            this.animateObject(object, 'pulse');
+            this.showParticleEffect(object.position, 'electric');
+            this.audioManager.playElectric();
+            this.checkCablePuzzle3D();
+        }
+    }
+
+    checkCablePuzzle3D() {
+        const correctSequence = ['battery+', 'switch', 'lamp', 'battery-'];
+        const isCorrect = this.cableConnections.every((connection, index) => 
+            connection === correctSequence[index]
+        );
+
+        if (isCorrect) {
+            // Turn on the lamp
+            if (this.cableComponents && this.cableComponents.lamp) {
+                this.cableComponents.lamp.userData.isOn = true;
+                this.cableComponents.lamp.material.emissiveIntensity = 0.5;
+                this.cableComponents.lamp.material.emissive.setHex(0xffff00);
+            }
+            
+            this.audioManager.playSuccess();
+            this.showFeedback('Rangkaian listrik berhasil diperbaiki! Listrik mengalir dalam rangkaian tertutup.', 'success');
+            this.collectEnergyKey(0);
+            setTimeout(() => {
+                this.hidePuzzleInterface();
+                this.level1Completed = true;
+            }, 2000);
+        } else {
+            this.audioManager.playError();
+            this.showFeedback('Rangkaian terbuka atau salah sambung. Arus tidak mengalir.', 'error');
+            this.resetCablePuzzle3D();
+        }
+    }
+
+    resetCablePuzzle3D() {
+        this.cableConnections = [];
+        
+        // Reset all components
+        Object.values(this.cableComponents).forEach(component => {
+            component.userData.isOn = false;
+            if (component.userData.componentType === 'lamp') {
+                component.material.emissiveIntensity = 0;
+                component.material.emissive.setHex(0x000000);
+            }
+        });
+    }
+
+    handleApplianceInteraction(object, data) {
+        // Toggle appliance state
+        data.on = !data.on;
+        object.userData.isOn = data.on;
+        
+        // Animate toggle
+        this.animateObject(object, 'toggle');
+        
+        // Show energy effect
+        if (data.on) {
+            this.showParticleEffect(object.position, 'energyFlow');
+            this.audioManager.playElectric();
+        } else {
+            this.audioManager.playClick();
+        }
+        
+        // Update appliance visual state
+        this.updateApplianceVisual(object, data);
+        
+        // Update power meter
+        this.updatePowerMeter();
+        
+        // Check efficiency puzzle
+        this.checkEfficiencyPuzzle();
+    }
+
+    updateApplianceVisual(object, data) {
+        if (data.applianceType === 'light') {
+            if (data.on) {
+                object.material.emissiveIntensity = 0.5;
+                object.material.emissive.setHex(0xffff00);
+            } else {
+                object.material.emissiveIntensity = 0;
+                object.material.emissive.setHex(0x000000);
+            }
+        } else if (data.applianceType === 'fan') {
+            if (data.on) {
+                object.rotation.y += 0.1;
+                this.animateObject(object, 'pulse');
+            }
+        }
+    }
+
+    handleSimulatorInteraction(object, data) {
+        // Show simulation interface
+        this.showEnergySimulator();
+    }
+
+    handleSliderInteraction(object, data) {
+        // Update slider value based on mouse position
+        const rect = this.renderer.domElement.getBoundingClientRect();
+        const mouseX = (this.mouse.x + 1) / 2; // Convert from -1,1 to 0,1
+        
+        // Update slider position
+        const track = object.userData.track;
+        const trackStart = track.position.x - 0.15;
+        const trackEnd = track.position.x + 0.15;
+        const newX = trackStart + (trackEnd - trackStart) * mouseX;
+        
+        object.position.x = Math.max(trackStart, Math.min(trackEnd, newX));
+        
+        // Update value (0-1)
+        data.value = (object.position.x - trackStart) / (trackEnd - trackStart);
+        
+        // Update simulator
+        this.updateSimulatorFromSliders();
+        
+        // Show particle effect
+        this.showParticleEffect(object.position, 'electric');
+    }
+
+    updateSimulatorFromSliders() {
+        if (!this.simulatorSliders) return;
+        
+        let totalEnergy = 0;
+        
+        this.simulatorSliders.forEach((slider, appliance) => {
+            const interactiveData = this.getInteractiveData(slider);
+            const value = interactiveData.value;
+            
+            // Convert slider value to hours (0-24)
+            const hours = value * 24;
+            
+            // Calculate energy consumption
+            const consumption = this.getApplianceConsumption(appliance);
+            const dailyEnergy = (consumption * hours) / 1000; // kWh
+            const monthlyEnergy = dailyEnergy * 30; // kWh per month
+            totalEnergy += monthlyEnergy;
+        });
+        
+        const billAmount = totalEnergy * 1500; // Rp 1,500 per kWh
+        
+        // Update bill display
+        this.updateBillDisplay(billAmount);
+        
+        // Check if target is met
+        if (billAmount <= this.targetBill) {
+            this.collectEnergyKey(2);
+            this.showFeedback('Tagihan listrik efisien tercapai! Blueprint alat rahasia ilmuwan ditemukan.', 'success');
+            setTimeout(() => {
+                this.hidePuzzleInterface();
+                this.level3Completed = true;
+            }, 2000);
+        }
+    }
+
+    getApplianceConsumption(appliance) {
+        const consumptions = {
+            light: 20,
+            ac: 1000,
+            tv: 100,
+            fridge: 150,
+            computer: 200
+        };
+        return consumptions[appliance] || 0;
+    }
+
+    updateBillDisplay(billAmount) {
+        // Update UI bill display
+        const billElement = document.getElementById('bill-amount');
+        if (billElement) {
+            billElement.textContent = Math.round(billAmount).toLocaleString();
+        }
+        
+        // Update 3D bill display
+        if (this.billDisplay) {
+            const billDisplayMaterial = this.billDisplay.material;
+            if (billAmount <= this.targetBill) {
+                billDisplayMaterial.color.setHex(0x4ecdc4);
+            } else {
+                billDisplayMaterial.color.setHex(0xff6b6b);
+            }
+        }
+    }
+
+    handleDoorInteraction(object, data) {
+        // Check if all keys collected
+        const allKeysCollected = this.gameData.energyKeys.every(key => key);
+        
+        if (allKeysCollected) {
+            this.animateObject(object, 'open');
+            this.showParticleEffect(object.position, 'energyFlow');
+            this.audioManager.playDoorOpen();
+            
+            // Update key slots
+            this.updateEnergyKeySlots();
+            
+            setTimeout(() => {
+                this.startQuiz();
+            }, 2000);
+        } else {
+            this.audioManager.playError();
+            this.showFeedback('Kumpulkan semua Kunci Energi terlebih dahulu!', 'error');
+        }
+    }
+
+    updateEnergyKeySlots() {
+        if (this.energyKeySlots) {
+            this.energyKeySlots.forEach((slot, index) => {
+                if (this.gameData.energyKeys[index]) {
+                    slot.material.emissiveIntensity = 0.5;
+                    slot.material.emissive.setHex(0x4ecdc4);
+                    this.showParticleEffect(slot.position, 'electric');
+                }
+            });
+        }
+    }
+
+    animateObject(object, animationType) {
+        const animationData = {
+            object: object,
+            type: animationType,
+            startTime: this.clock.getElapsedTime(),
+            duration: 1.0
+        };
+        
+        this.animations.set(object.uuid, animationData);
+    }
+
+    showParticleEffect(position, type) {
+        const particles = this.particleSystems.get(type);
+        if (particles) {
+            particles.position.copy(position);
+            particles.visible = true;
+            
+            // Hide after animation
+            setTimeout(() => {
+                particles.visible = false;
+            }, 2000);
+        }
+    }
+
+    startDragging(object) {
+        object.userData.isDragging = true;
+        object.userData.dragStartPosition = object.position.clone();
+        
+        // Add drag effect
+        this.showParticleEffect(object.position, 'electric');
+    }
+
+    stopDragging(object) {
+        object.userData.isDragging = false;
+        
+        // Check for valid drop position
+        this.checkDropPosition(object);
+    }
+
+    checkDropPosition(object) {
+        // Check if dropped on valid connection point
+        const intersects = this.raycaster.intersectObjects(Array.from(this.interactiveObjects.values()));
+        
+        if (intersects.length > 0) {
+            const targetObject = intersects[0].object;
+            const targetData = this.getInteractiveData(targetObject);
+            
+            if (targetData && targetData.acceptsConnection) {
+                this.connectObjects(object, targetObject);
+            } else {
+                // Return to original position
+                object.position.copy(object.userData.dragStartPosition);
+            }
+        } else {
+            // Return to original position
+            object.position.copy(object.userData.dragStartPosition);
+        }
+    }
+
+    connectObjects(object1, object2) {
+        // Create connection line
+        const geometry = new THREE.BufferGeometry();
+        const positions = new Float32Array([
+            object1.position.x, object1.position.y, object1.position.z,
+            object2.position.x, object2.position.y, object2.position.z
+        ]);
+        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        
+        const material = new THREE.LineBasicMaterial({
+            color: 0x4ecdc4,
+            linewidth: 3
+        });
+        
+        const line = new THREE.Line(geometry, material);
+        this.scene.add(line);
+        
+        // Store connection
+        if (!object1.userData.connections) {
+            object1.userData.connections = [];
+        }
+        object1.userData.connections.push({ object: object2, line: line });
+        
+        // Show connection effect
+        this.showParticleEffect(object1.position, 'energyFlow');
+        this.showParticleEffect(object2.position, 'energyFlow');
+        
+        // Play connection sound
+        this.audioManager.playElectric();
     }
 
     async loadAssets() {
@@ -513,6 +1251,7 @@ class EnergyQuestGame {
 
     setupLevel1Scene() {
         this.scene.clear();
+        this.interactiveObjects.clear();
         
         // Add room model
         const roomModel = this.assets.get('ruangan');
@@ -523,14 +1262,20 @@ class EnergyQuestGame {
             this.scene.add(room);
         }
 
-        // Add lighting
-        const ambientLight = new THREE.AmbientLight(0x404040, 0.4);
-        this.scene.add(ambientLight);
+        // Add interactive electrical components
+        this.setupInteractiveCableComponents();
 
-        const directionalLight = new THREE.DirectionalLight(0x4ecdc4, 0.6);
-        directionalLight.position.set(5, 10, 5);
-        directionalLight.castShadow = true;
-        this.scene.add(directionalLight);
+        // Add dynamic lighting
+        this.setupDynamicLighting();
+
+        // Add particle systems to scene
+        this.particleSystems.forEach((particles, name) => {
+            this.scene.add(particles);
+            particles.visible = false;
+        });
+
+        // Setup camera controls
+        this.setupCameraControls();
 
         this.camera.position.set(0, 3, 8);
         this.camera.lookAt(0, 0, 0);
@@ -538,8 +1283,122 @@ class EnergyQuestGame {
         this.setupCablePuzzle();
     }
 
+    setupInteractiveCableComponents() {
+        // Create interactive battery (+)
+        const batteryGeometry = new THREE.BoxGeometry(0.5, 0.8, 0.3);
+        const batteryMaterial = new THREE.MeshPhongMaterial({ color: 0x4ecdc4 });
+        const batteryPlus = new THREE.Mesh(batteryGeometry, batteryMaterial);
+        batteryPlus.position.set(-2, 0, 0);
+        batteryPlus.userData.componentType = 'battery+';
+        
+        this.addInteractiveObject(batteryPlus, {
+            type: 'cable_component',
+            componentType: 'battery+',
+            draggable: true,
+            acceptsConnection: true
+        });
+        this.scene.add(batteryPlus);
+
+        // Create interactive switch
+        const switchGeometry = new THREE.CylinderGeometry(0.2, 0.2, 0.1, 8);
+        const switchMaterial = new THREE.MeshPhongMaterial({ color: 0x666666 });
+        const switchComponent = new THREE.Mesh(switchGeometry, switchMaterial);
+        switchComponent.position.set(-1, 0, 0);
+        switchComponent.userData.componentType = 'switch';
+        
+        this.addInteractiveObject(switchComponent, {
+            type: 'cable_component',
+            componentType: 'switch',
+            draggable: true,
+            acceptsConnection: true
+        });
+        this.scene.add(switchComponent);
+
+        // Create interactive lamp
+        const lampGeometry = new THREE.SphereGeometry(0.3, 16, 16);
+        const lampMaterial = new THREE.MeshPhongMaterial({ 
+            color: 0xffff00,
+            emissive: 0x000000,
+            emissiveIntensity: 0
+        });
+        const lampComponent = new THREE.Mesh(lampGeometry, lampMaterial);
+        lampComponent.position.set(0, 0, 0);
+        lampComponent.userData.componentType = 'lamp';
+        lampComponent.userData.isOn = false;
+        
+        this.addInteractiveObject(lampComponent, {
+            type: 'cable_component',
+            componentType: 'lamp',
+            draggable: true,
+            acceptsConnection: true
+        });
+        this.scene.add(lampComponent);
+
+        // Create interactive battery (-)
+        const batteryMinus = new THREE.Mesh(batteryGeometry, batteryMaterial);
+        batteryMinus.position.set(1, 0, 0);
+        batteryMinus.userData.componentType = 'battery-';
+        
+        this.addInteractiveObject(batteryMinus, {
+            type: 'cable_component',
+            componentType: 'battery-',
+            draggable: true,
+            acceptsConnection: true
+        });
+        this.scene.add(batteryMinus);
+
+        // Store components for puzzle logic
+        this.cableComponents = {
+            'battery+': batteryPlus,
+            'switch': switchComponent,
+            'lamp': lampComponent,
+            'battery-': batteryMinus
+        };
+    }
+
+    setupDynamicLighting() {
+        // Ambient light
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.4);
+        this.scene.add(ambientLight);
+
+        // Main directional light
+        const directionalLight = new THREE.DirectionalLight(0x4ecdc4, 0.6);
+        directionalLight.position.set(5, 10, 5);
+        directionalLight.castShadow = true;
+        this.scene.add(directionalLight);
+
+        // Dynamic point lights for electrical effects
+        const pointLight1 = new THREE.PointLight(0x4ecdc4, 1, 5);
+        pointLight1.position.set(-2, 1, 0);
+        pointLight1.userData.isDynamic = true;
+        this.scene.add(pointLight1);
+        this.dynamicLights.set('battery+', pointLight1);
+
+        const pointLight2 = new THREE.PointLight(0x4ecdc4, 1, 5);
+        pointLight2.position.set(0, 1, 0);
+        pointLight2.userData.isDynamic = true;
+        this.scene.add(pointLight2);
+        this.dynamicLights.set('lamp', pointLight2);
+    }
+
+    setupCameraControls() {
+        if (this.controls) {
+            this.controls.dispose();
+        }
+        
+        this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
+        this.controls.enableDamping = true;
+        this.controls.dampingFactor = 0.05;
+        this.controls.enableZoom = true;
+        this.controls.enablePan = true;
+        this.controls.maxPolarAngle = Math.PI / 2;
+        this.controls.minDistance = 3;
+        this.controls.maxDistance = 15;
+    }
+
     setupLevel2Scene() {
         this.scene.clear();
+        this.interactiveObjects.clear();
         
         // Add kitchen model
         const kitchenModel = this.assets.get('dapur');
@@ -550,14 +1409,20 @@ class EnergyQuestGame {
             this.scene.add(kitchen);
         }
 
-        // Add lighting
-        const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
-        this.scene.add(ambientLight);
+        // Add interactive appliances
+        this.setupInteractiveAppliances();
 
-        const directionalLight = new THREE.DirectionalLight(0x4ecdc4, 0.7);
-        directionalLight.position.set(5, 10, 5);
-        directionalLight.castShadow = true;
-        this.scene.add(directionalLight);
+        // Add dynamic lighting
+        this.setupDynamicLighting();
+
+        // Add particle systems to scene
+        this.particleSystems.forEach((particles, name) => {
+            this.scene.add(particles);
+            particles.visible = false;
+        });
+
+        // Setup camera controls
+        this.setupCameraControls();
 
         this.camera.position.set(0, 3, 8);
         this.camera.lookAt(0, 0, 0);
@@ -565,8 +1430,91 @@ class EnergyQuestGame {
         this.setupEfficiencyPuzzle();
     }
 
+    setupInteractiveAppliances() {
+        // Interactive Light
+        const lightGeometry = new THREE.SphereGeometry(0.2, 16, 16);
+        const lightMaterial = new THREE.MeshPhongMaterial({ 
+            color: 0xffff00,
+            emissive: 0x000000,
+            emissiveIntensity: 0
+        });
+        const lightAppliance = new THREE.Mesh(lightGeometry, lightMaterial);
+        lightAppliance.position.set(-2, 2, -1);
+        lightAppliance.userData.applianceType = 'light';
+        lightAppliance.userData.isOn = true;
+        lightAppliance.userData.consumption = 20;
+        
+        this.addInteractiveObject(lightAppliance, {
+            type: 'appliance',
+            applianceType: 'light',
+            on: true,
+            consumption: 20
+        });
+        this.scene.add(lightAppliance);
+
+        // Interactive Fridge
+        const fridgeGeometry = new THREE.BoxGeometry(0.8, 1.2, 0.6);
+        const fridgeMaterial = new THREE.MeshPhongMaterial({ color: 0xffffff });
+        const fridgeAppliance = new THREE.Mesh(fridgeGeometry, fridgeMaterial);
+        fridgeAppliance.position.set(2, 0, -1);
+        fridgeAppliance.userData.applianceType = 'fridge';
+        fridgeAppliance.userData.isOn = true;
+        fridgeAppliance.userData.consumption = 150;
+        
+        this.addInteractiveObject(fridgeAppliance, {
+            type: 'appliance',
+            applianceType: 'fridge',
+            on: true,
+            consumption: 150
+        });
+        this.scene.add(fridgeAppliance);
+
+        // Interactive Fan
+        const fanGeometry = new THREE.CylinderGeometry(0.3, 0.3, 0.1, 8);
+        const fanMaterial = new THREE.MeshPhongMaterial({ color: 0x666666 });
+        const fanAppliance = new THREE.Mesh(fanGeometry, fanMaterial);
+        fanAppliance.position.set(0, 1.5, -1);
+        fanAppliance.userData.applianceType = 'fan';
+        fanAppliance.userData.isOn = false;
+        fanAppliance.userData.consumption = 50;
+        
+        this.addInteractiveObject(fanAppliance, {
+            type: 'appliance',
+            applianceType: 'fan',
+            on: false,
+            consumption: 50
+        });
+        this.scene.add(fanAppliance);
+
+        // Interactive Rice Cooker
+        const riceCookerGeometry = new THREE.CylinderGeometry(0.4, 0.4, 0.3, 8);
+        const riceCookerMaterial = new THREE.MeshPhongMaterial({ color: 0xff6b6b });
+        const riceCookerAppliance = new THREE.Mesh(riceCookerGeometry, riceCookerMaterial);
+        riceCookerAppliance.position.set(-1, 0.2, 1);
+        riceCookerAppliance.userData.applianceType = 'riceCooker';
+        riceCookerAppliance.userData.isOn = false;
+        riceCookerAppliance.userData.consumption = 800;
+        
+        this.addInteractiveObject(riceCookerAppliance, {
+            type: 'appliance',
+            applianceType: 'riceCooker',
+            on: false,
+            consumption: 800
+        });
+        this.scene.add(riceCookerAppliance);
+
+        // Store appliances for efficiency puzzle
+        this.appliances = {
+            light: { on: true, consumption: 20, object: lightAppliance },
+            fridge: { on: true, consumption: 150, object: fridgeAppliance },
+            fan: { on: false, consumption: 50, object: fanAppliance },
+            riceCooker: { on: false, consumption: 800, object: riceCookerAppliance }
+        };
+    }
+
     setupLevel3Scene() {
         this.scene.clear();
+        this.interactiveObjects.clear();
         
         // Add laboratory model
         const labModel = this.assets.get('laboratory');
@@ -577,14 +1525,20 @@ class EnergyQuestGame {
             this.scene.add(lab);
         }
 
-        // Add lighting
-        const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
-        this.scene.add(ambientLight);
+        // Add interactive simulator console
+        this.setupInteractiveSimulator();
 
-        const directionalLight = new THREE.DirectionalLight(0x4ecdc4, 0.8);
-        directionalLight.position.set(5, 10, 5);
-        directionalLight.castShadow = true;
-        this.scene.add(directionalLight);
+        // Add dynamic lighting
+        this.setupDynamicLighting();
+
+        // Add particle systems to scene
+        this.particleSystems.forEach((particles, name) => {
+            this.scene.add(particles);
+            particles.visible = false;
+        });
+
+        // Setup camera controls
+        this.setupCameraControls();
 
         this.camera.position.set(0, 3, 8);
         this.camera.lookAt(0, 0, 0);
@@ -592,8 +1546,86 @@ class EnergyQuestGame {
         this.setupEnergySimulator();
     }
 
+    setupInteractiveSimulator() {
+        // Create simulator console
+        const consoleGeometry = new THREE.BoxGeometry(2, 0.5, 1);
+        const consoleMaterial = new THREE.MeshPhongMaterial({ color: 0x333333 });
+        const simulatorConsole = new THREE.Mesh(consoleGeometry, consoleMaterial);
+        simulatorConsole.position.set(0, 0.5, 0);
+        
+        this.addInteractiveObject(simulatorConsole, {
+            type: 'simulator',
+            draggable: false
+        });
+        this.scene.add(simulatorConsole);
+
+        // Create interactive sliders for each appliance
+        this.setupSimulatorSliders();
+
+        // Create bill display screen
+        this.setupBillDisplay();
+    }
+
+    setupSimulatorSliders() {
+        const sliderPositions = [
+            { x: -0.8, y: 0.8, z: 0.5, appliance: 'light' },
+            { x: -0.4, y: 0.8, z: 0.5, appliance: 'ac' },
+            { x: 0, y: 0.8, z: 0.5, appliance: 'tv' },
+            { x: 0.4, y: 0.8, z: 0.5, appliance: 'fridge' },
+            { x: 0.8, y: 0.8, z: 0.5, appliance: 'computer' }
+        ];
+
+        this.simulatorSliders = new Map();
+
+        sliderPositions.forEach((pos, index) => {
+            // Slider track
+            const trackGeometry = new THREE.BoxGeometry(0.3, 0.05, 0.05);
+            const trackMaterial = new THREE.MeshPhongMaterial({ color: 0x666666 });
+            const track = new THREE.Mesh(trackGeometry, trackMaterial);
+            track.position.set(pos.x, pos.y, pos.z);
+            this.scene.add(track);
+
+            // Slider handle
+            const handleGeometry = new THREE.SphereGeometry(0.08, 16, 16);
+            const handleMaterial = new THREE.MeshPhongMaterial({ color: 0x4ecdc4 });
+            const handle = new THREE.Mesh(handleGeometry, handleMaterial);
+            handle.position.set(pos.x, pos.y, pos.z + 0.1);
+            handle.userData.appliance = pos.appliance;
+            handle.userData.value = 0.5; // 0-1 range
+            handle.userData.track = track;
+            
+            this.addInteractiveObject(handle, {
+                type: 'slider',
+                appliance: pos.appliance,
+                draggable: true,
+                value: 0.5
+            });
+            this.scene.add(handle);
+
+            this.simulatorSliders.set(pos.appliance, handle);
+        });
+    }
+
+    setupBillDisplay() {
+        // Create bill display screen
+        const screenGeometry = new THREE.PlaneGeometry(1.5, 0.8);
+        const screenMaterial = new THREE.MeshBasicMaterial({ 
+            color: 0x000000,
+            transparent: true,
+            opacity: 0.8
+        });
+        const billScreen = new THREE.Mesh(screenGeometry, screenMaterial);
+        billScreen.position.set(0, 1.5, 0.5);
+        billScreen.userData.isScreen = true;
+        this.scene.add(billScreen);
+
+        // Create bill text (using CSS2DRenderer would be better, but keeping it simple)
+        this.billDisplay = billScreen;
+    }
+
     setupLevel4Scene() {
         this.scene.clear();
+        this.interactiveObjects.clear();
         
         // Add basement model
         const basementModel = this.assets.get('ruang bawah tanah');
@@ -604,19 +1636,110 @@ class EnergyQuestGame {
             this.scene.add(basement);
         }
 
-        // Add lighting
-        const ambientLight = new THREE.AmbientLight(0x404040, 0.3);
-        this.scene.add(ambientLight);
+        // Add interactive final door
+        this.setupInteractiveFinalDoor();
 
-        const directionalLight = new THREE.DirectionalLight(0x4ecdc4, 0.9);
-        directionalLight.position.set(5, 10, 5);
-        directionalLight.castShadow = true;
-        this.scene.add(directionalLight);
+        // Add dynamic lighting
+        this.setupDynamicLighting();
+
+        // Add particle systems to scene
+        this.particleSystems.forEach((particles, name) => {
+            this.scene.add(particles);
+            particles.visible = false;
+        });
+
+        // Setup camera controls
+        this.setupCameraControls();
 
         this.camera.position.set(0, 3, 8);
         this.camera.lookAt(0, 0, 0);
 
         this.setupFinalDoor();
+    }
+
+    setupInteractiveFinalDoor() {
+        // Create final door
+        const doorGeometry = new THREE.BoxGeometry(1, 2, 0.2);
+        const doorMaterial = new THREE.MeshPhongMaterial({ 
+            color: 0x8B4513,
+            emissive: 0x000000,
+            emissiveIntensity: 0
+        });
+        const finalDoor = new THREE.Mesh(doorGeometry, doorMaterial);
+        finalDoor.position.set(0, 0, 2);
+        finalDoor.userData.isDoor = true;
+        finalDoor.userData.isOpen = false;
+        
+        this.addInteractiveObject(finalDoor, {
+            type: 'door',
+            draggable: false
+        });
+        this.scene.add(finalDoor);
+
+        // Create energy key slots
+        this.setupEnergyKeySlots();
+
+        // Create door frame with energy effects
+        this.setupDoorFrame();
+    }
+
+    setupEnergyKeySlots() {
+        const keySlotPositions = [
+            { x: -0.3, y: 0.5, z: 2.1 },
+            { x: 0, y: 0.5, z: 2.1 },
+            { x: 0.3, y: 0.5, z: 2.1 }
+        ];
+
+        this.energyKeySlots = new Map();
+
+        keySlotPositions.forEach((pos, index) => {
+            // Key slot
+            const slotGeometry = new THREE.CylinderGeometry(0.1, 0.1, 0.05, 8);
+            const slotMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0x4ecdc4,
+                emissive: 0x000000,
+                emissiveIntensity: 0
+            });
+            const keySlot = new THREE.Mesh(slotGeometry, slotMaterial);
+            keySlot.position.set(pos.x, pos.y, pos.z);
+            keySlot.userData.keyIndex = index;
+            keySlot.userData.hasKey = false;
+            
+            this.addInteractiveObject(keySlot, {
+                type: 'key_slot',
+                keyIndex: index,
+                hasKey: false
+            });
+            this.scene.add(keySlot);
+
+            this.energyKeySlots.set(index, keySlot);
+        });
+    }
+
+    setupDoorFrame() {
+        // Create door frame with energy effects
+        const frameGeometry = new THREE.BoxGeometry(1.2, 2.2, 0.1);
+        const frameMaterial = new THREE.MeshPhongMaterial({ 
+            color: 0x4ecdc4,
+            emissive: 0x4ecdc4,
+            emissiveIntensity: 0.2
+        });
+        const doorFrame = new THREE.Mesh(frameGeometry, frameMaterial);
+        doorFrame.position.set(0, 0, 1.9);
+        this.scene.add(doorFrame);
+
+        // Add energy field effect
+        const fieldGeometry = new THREE.PlaneGeometry(1.5, 2.5);
+        const fieldMaterial = new THREE.MeshBasicMaterial({
+            color: 0x4ecdc4,
+            transparent: true,
+            opacity: 0.1,
+            side: THREE.DoubleSide
+        });
+        const energyField = new THREE.Mesh(fieldGeometry, fieldMaterial);
+        energyField.position.set(0, 0, 1.8);
+        energyField.userData.isEnergyField = true;
+        this.scene.add(energyField);
     }
 
     // Puzzle Setup Methods
@@ -1153,8 +2276,145 @@ class EnergyQuestGame {
 
     updateGameScene() {
         if (this.renderer && this.scene && this.camera) {
+            const deltaTime = this.clock.getDelta();
+            
+            // Update physics
+            this.physicsWorld.update(deltaTime);
+            
+            // Update animations
+            this.updateAnimations(deltaTime);
+            
+            // Update particle systems
+            this.updateParticleSystems(deltaTime);
+            
+            // Update dynamic lighting
+            this.updateDynamicLighting(deltaTime);
+            
+            // Update camera controls
+            if (this.controls) {
+                this.controls.update();
+            }
+            
+            // Update dragged objects
+            this.updateDraggedObjects();
+            
+            // Render scene
             this.renderer.render(this.scene, this.camera);
         }
+    }
+
+    updateAnimations(deltaTime) {
+        this.animations.forEach((animation, uuid) => {
+            const elapsed = this.clock.getElapsedTime() - animation.startTime;
+            const progress = Math.min(elapsed / animation.duration, 1);
+            
+            switch (animation.type) {
+                case 'pulse':
+                    const scale = 1 + Math.sin(progress * Math.PI * 4) * 0.1;
+                    animation.object.scale.setScalar(scale);
+                    break;
+                    
+                case 'toggle':
+                    const rotation = progress * Math.PI;
+                    animation.object.rotation.y = rotation;
+                    break;
+                    
+                case 'open':
+                    const openProgress = Math.sin(progress * Math.PI / 2);
+                    animation.object.rotation.y = openProgress * Math.PI / 2;
+                    break;
+            }
+            
+            if (progress >= 1) {
+                this.animations.delete(uuid);
+            }
+        });
+    }
+
+    updateParticleSystems(deltaTime) {
+        this.particleSystems.forEach((particles, name) => {
+            if (particles.visible) {
+                // Animate particles
+                const positions = particles.geometry.attributes.position.array;
+                const colors = particles.geometry.attributes.color.array;
+                
+                for (let i = 0; i < positions.length; i += 3) {
+                    // Add some movement to particles
+                    positions[i] += (Math.random() - 0.5) * 0.01;
+                    positions[i + 1] += (Math.random() - 0.5) * 0.01;
+                    positions[i + 2] += (Math.random() - 0.5) * 0.01;
+                }
+                
+                particles.geometry.attributes.position.needsUpdate = true;
+            }
+        });
+    }
+
+    updateDynamicLighting(deltaTime) {
+        this.dynamicLights.forEach((light, name) => {
+            if (light.userData.isDynamic) {
+                // Add subtle pulsing to lights
+                const intensity = 1 + Math.sin(this.clock.getElapsedTime() * 2) * 0.2;
+                light.intensity = intensity;
+                
+                // Update light position based on connected objects
+                if (name === 'lamp' && this.cableComponents && this.cableComponents.lamp) {
+                    const lamp = this.cableComponents.lamp;
+                    light.position.copy(lamp.position);
+                    light.position.y += 0.5;
+                    
+                    // Update lamp material based on connection
+                    if (lamp.userData.isOn) {
+                        lamp.material.emissiveIntensity = 0.5;
+                        lamp.material.emissive.setHex(0xffff00);
+                    } else {
+                        lamp.material.emissiveIntensity = 0;
+                        lamp.material.emissive.setHex(0x000000);
+                    }
+                }
+            }
+        });
+    }
+
+    updateDraggedObjects() {
+        if (this.draggedObject) {
+            const interactiveData = this.getInteractiveData(this.draggedObject);
+            
+            if (interactiveData && interactiveData.type === 'slider') {
+                // Handle slider dragging
+                this.updateSliderPosition(this.draggedObject, interactiveData);
+            } else {
+                // Handle regular object dragging
+                const vector = new THREE.Vector3(this.mouse.x, this.mouse.y, 0.5);
+                vector.unproject(this.camera);
+                
+                const dir = vector.sub(this.camera.position).normalize();
+                const distance = -this.camera.position.z / dir.z;
+                const pos = this.camera.position.clone().add(dir.multiplyScalar(distance));
+                
+                this.draggedObject.position.copy(pos);
+            }
+            
+            // Show drag effect
+            this.showParticleEffect(this.draggedObject.position, 'electric');
+        }
+    }
+
+    updateSliderPosition(slider, data) {
+        const track = slider.userData.track;
+        const mouseX = (this.mouse.x + 1) / 2; // Convert from -1,1 to 0,1
+        
+        const trackStart = track.position.x - 0.15;
+        const trackEnd = track.position.x + 0.15;
+        const newX = trackStart + (trackEnd - trackStart) * mouseX;
+        
+        slider.position.x = Math.max(trackStart, Math.min(trackEnd, newX));
+        
+        // Update value (0-1)
+        data.value = (slider.position.x - trackStart) / (trackEnd - trackStart);
+        
+        // Update simulator in real-time
+        this.updateSimulatorFromSliders();
     }
 
     animate() {
