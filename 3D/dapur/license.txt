@@ -1,0 +1,11 @@
+Model Information:
+* title:	kitchen assets
+* source:	https://sketchfab.com/3d-models/kitchen-assets-6b33633360d34fa09c5f7abc6ee76ae3
+* author:	P_4_N_D_A (https://sketchfab.com/P_4_N_D_A)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "kitchen assets" (https://sketchfab.com/3d-models/kitchen-assets-6b33633360d34fa09c5f7abc6ee76ae3) by P_4_N_D_A (https://sketchfab.com/P_4_N_D_A) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
