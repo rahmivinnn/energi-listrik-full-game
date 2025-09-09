@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Energy Quest: Misteri Hemat Listrik</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="game-container">
+        <!-- Loading Screen -->
+        <div id="loading-screen" class="screen">
+            <div class="loading-content">
+                <h1>Energy Quest</h1>
+                <h2>Misteri Hemat Listrik</h2>
+                <div class="loading-bar">
+                    <div class="loading-progress"></div>
+                </div>
+                <p class="loading-text">Memuat aset 3D...</p>
+            </div>
+        </div>
+
+        <!-- Opening Cutscene -->
+        <div id="opening-cutscene" class="screen hidden">
+            <div class="cutscene-overlay">
+                <div class="cutscene-content">
+                    <div class="cutscene-text">
+                        <h2 id="cutscene-title">Ilmuwan listrik terkenal menghilang misterius. Rumahnya penuh teka-teki listrik.</h2>
+                        <p id="cutscene-subtitle">Hanya mereka yang memahami listrik yang bisa mengungkap misteri ini.</p>
+                    </div>
+                    <div class="cutscene-character">
+                        <p id="cutscene-character-text">Masuklah ke dalam rumah misterius ini. Pecahkan puzzle, kumpulkan Kunci Energi, dan temukan sang ilmuwan.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Menu -->
+        <div id="main-menu" class="screen hidden">
+            <div class="menu-background">
+                <div class="menu-content">
+                    <h1 class="game-title">Energy Quest</h1>
+                    <h2 class="game-subtitle">Misteri Hemat Listrik</h2>
+                    <div class="menu-buttons">
+                        <button class="menu-btn" id="start-game">Mulai Permainan</button>
+                        <button class="menu-btn" id="continue-game">Lanjutkan</button>
+                        <button class="menu-btn" id="settings">Pengaturan</button>
+                        <button class="menu-btn" id="about">Tentang</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Game Canvas -->
+        <div id="game-canvas-container" class="screen hidden">
+            <canvas id="game-canvas"></canvas>
+            
+            <!-- UI Overlay -->
+            <div id="game-ui">
+                <!-- Energy Keys Display -->
+                <div id="energy-keys" class="ui-element">
+                    <h3>Kunci Energi</h3>
+                    <div class="keys-container">
+                        <div class="key" id="key-1">🔑</div>
+                        <div class="key" id="key-2">🔑</div>
+                        <div class="key" id="key-3">🔑</div>
+                    </div>
+                </div>
+
+                <!-- Power Meter -->
+                <div id="power-meter" class="ui-element">
+                    <h3>Power Meter</h3>
+                    <div class="meter">
+                        <div class="meter-fill" id="meter-fill"></div>
+                        <span class="meter-text" id="meter-text">Efisien</span>
+                    </div>
+                </div>
+
+                <!-- Instructions -->
+                <div id="instructions" class="ui-element">
+                    <p id="instruction-text">Jelajahi rumah dan temukan puzzle listrik!</p>
+                </div>
+
+                <!-- Puzzle Interface -->
+                <div id="puzzle-interface" class="ui-element hidden">
+                    <div class="puzzle-content" id="puzzle-content"></div>
+                    <button class="puzzle-btn" id="puzzle-submit">Submit</button>
+                    <button class="puzzle-btn" id="puzzle-cancel">Batal</button>
+                </div>
+
+                <!-- Quiz Interface -->
+                <div id="quiz-interface" class="ui-element hidden">
+                    <div class="quiz-content">
+                        <h3 id="quiz-question">Pertanyaan akan muncul di sini</h3>
+                        <div class="quiz-options" id="quiz-options"></div>
+                        <div class="quiz-progress">
+                            <span id="quiz-progress-text">Soal 1 dari 10</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Feedback Messages -->
+                <div id="feedback" class="ui-element hidden">
+                    <div class="feedback-content" id="feedback-content"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Modal -->
+        <div id="settings-modal" class="modal hidden">
+            <div class="modal-content">
+                <h2>Pengaturan</h2>
+                <div class="setting-item">
+                    <label>Volume Musik:</label>
+                    <input type="range" id="music-volume" min="0" max="100" value="70">
+                </div>
+                <div class="setting-item">
+                    <label>Volume Efek Suara:</label>
+                    <input type="range" id="sfx-volume" min="0" max="100" value="80">
+                </div>
+                <div class="setting-item">
+                    <label>Kualitas Grafik:</label>
+                    <select id="graphics-quality">
+                        <option value="high">Tinggi</option>
+                        <option value="medium" selected>Sedang</option>
+                        <option value="low">Rendah</option>
+                    </select>
+                </div>
+                <button class="modal-btn" id="settings-close">Tutup</button>
+            </div>
+        </div>
+
+        <!-- About Modal -->
+        <div id="about-modal" class="modal hidden">
+            <div class="modal-content">
+                <h2>Tentang Game</h2>
+                <p>Energy Quest: Misteri Hemat Listrik adalah game edukasi puzzle adventure yang dirancang untuk meningkatkan kesadaran penggunaan energi listrik yang efisien.</p>
+                <p><strong>Target:</strong> Siswa SMP (usia 12-15 tahun)</p>
+                <p><strong>Tujuan:</strong> Edukasi tentang konsep dasar listrik dan pentingnya efisiensi energi melalui gameplay yang menyenangkan.</p>
+                <button class="modal-btn" id="about-close">Tutup</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="audio.js"></script>
+    <script src="game.js"></script>
+</body>
+</html>
