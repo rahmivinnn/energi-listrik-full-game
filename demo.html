@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Energy Quest Demo - Unity-Style Systems</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background: #000;
+            color: white;
+            overflow: hidden;
+        }
+        
+        #game-canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        .ui-overlay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 1000;
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid #4ecdc4;
+        }
+        
+        .status {
+            margin: 5px 0;
+            font-size: 14px;
+        }
+        
+        .success { color: #4caf50; }
+        .error { color: #f44336; }
+        .info { color: #4ecdc4; }
+        
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid #4ecdc4;
+        }
+        
+        .control-item {
+            margin: 5px 0;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="game-canvas"></canvas>
+    
+    <div class="ui-overlay">
+        <h3>🚀 Energy Quest Demo</h3>
+        <div id="status">
+            <div class="status info">Initializing Unity-style systems...</div>
+        </div>
+    </div>
+    
+    <div class="controls">
+        <h4>🎮 Controls</h4>
+        <div class="control-item">Mouse: Click & Drag objects</div>
+        <div class="control-item">WASD: Move camera</div>
+        <div class="control-item">E: Interact</div>
+        <div class="control-item">Scroll: Zoom</div>
+        <div class="control-item">ESC: Pause</div>
+    </div>
+
+    <script src="https://unpkg.com/three@0.158.0/build/three.min.js"></script>
+    <script src="https://unpkg.com/cannon@0.20.0/build/cannon.min.js"></script>
+    <script src="audio.js"></script>
+    <script src="post-processing.js"></script>
+    <script src="shaders.js"></script>
+    <script src="physics.js"></script>
+    <script src="ui-system.js"></script>
+    <script src="performance.js"></script>
+    <script src="effects.js"></script>
+    <script src="input-system.js"></script>
+
+    <script>
+        class UnityStyleDemo {
+            constructor() {
+                this.scene = null;
+                this.camera = null;
+                this.renderer = null;
+                this.clock = new THREE.Clock();
+                this.statusDiv = document.getElementById('status');
+                
+                this.init();
+            }
+
+            init() {
+                this.addStatus('Setting up Three.js scene...', 'info');
+                this.setupScene();
+                
+                this.addStatus('Initializing Unity-style systems...', 'info');
+                this.setupSystems();
+                
+                this.addStatus('Creating demo objects...', 'info');
+                this.createDemoObjects();
+                
+                this.addStatus('Starting render loop...', 'info');
+                this.animate();
+                
+                this.addStatus('✅ All systems loaded successfully!', 'success');
+            }
+
+            setupScene() {
+                // Scene
+                this.scene = new THREE.Scene();
+                this.scene.background = new THREE.Color(0x1a1a2e);
+
+                // Camera
+                this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                this.camera.position.set(0, 5, 10);
+
+                // Renderer
+                this.renderer = new THREE.WebGLRenderer({ 
+                    canvas: document.getElementById('game-canvas'),
+                    antialias: true,
+                    powerPreference: "high-performance"
+                });
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.shadowMap.enabled = true;
+                this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+                this.renderer.outputEncoding = THREE.sRGBEncoding;
+                this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+                this.renderer.toneMappingExposure = 1.0;
+
+                // Lighting
+                const ambientLight = new THREE.AmbientLight(0x404040, 0.3);
+                this.scene.add(ambientLight);
+
+                const directionalLight = new THREE.DirectionalLight(0x4ecdc4, 1);
+                directionalLight.position.set(10, 10, 5);
+                directionalLight.castShadow = true;
+                this.scene.add(directionalLight);
+            }
+
+            setupSystems() {
+                try {
+                    // Initialize all Unity-style systems
+                    this.shaderManager = new ShaderManager();
+                    this.addStatus('✅ ShaderManager initialized', 'success');
+                    
+                    this.physicsEngine = new PhysicsEngine();
+                    this.addStatus('✅ PhysicsEngine initialized', 'success');
+                    
+                    this.inputSystem = new InputSystem();
+                    this.addStatus('✅ InputSystem initialized', 'success');
+                    
+                    this.performanceManager = new PerformanceManager(this.renderer, this.scene, this.camera);
+                    this.addStatus('✅ PerformanceManager initialized', 'success');
+                    
+                    this.effectsManager = new EffectsManager(this.scene, this.camera, this.renderer);
+                    this.addStatus('✅ EffectsManager initialized', 'success');
+                    
+                    this.uiSystem = new UISystem(this.renderer, this.camera);
+                    this.addStatus('✅ UISystem initialized', 'success');
+                    
+                    this.postProcessing = new PostProcessingPipeline(this.renderer, this.scene, this.camera);
+                    this.addStatus('✅ PostProcessing initialized', 'success');
+                    
+                } catch (error) {
+                    this.addStatus(`❌ System error: ${error.message}`, 'error');
+                }
+            }
+
+            createDemoObjects() {
+                // Create demo objects with Unity-style features
+                
+                // 1. PBR Material Cube
+                const cubeGeometry = new THREE.BoxGeometry(2, 2, 2);
+                const cubeMaterial = this.shaderManager.createMaterial('pbr', {
+                    color: { value: new THREE.Color(0x4ecdc4) },
+                    metalness: { value: 0.8 },
+                    roughness: { value: 0.2 }
+                });
+                const cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
+                cube.position.set(-5, 0, 0);
+                cube.castShadow = true;
+                cube.receiveShadow = true;
+                this.scene.add(cube);
+
+                // Add physics body
+                const cubePhysics = this.physicsEngine.createDynamicBody(cubeGeometry, { x: -5, y: 0, z: 0 }, 1, 'metal');
+                cube.userData.physicsBody = cubePhysics;
+
+                // 2. Emissive Sphere
+                const sphereGeometry = new THREE.SphereGeometry(1, 32, 32);
+                const sphereMaterial = this.shaderManager.createMaterial('emissive', {
+                    color: { value: new THREE.Color(0xff6b6b) },
+                    intensity: { value: 1.0 },
+                    pulseSpeed: { value: 2.0 }
+                });
+                const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+                sphere.position.set(0, 0, 0);
+                sphere.castShadow = true;
+                this.scene.add(sphere);
+
+                // 3. Electric Torus
+                const torusGeometry = new THREE.TorusGeometry(1.5, 0.5, 16, 100);
+                const electricMaterial = this.shaderManager.createMaterial('electric', {
+                    color: { value: new THREE.Color(0x4ecdc4) },
+                    intensity: { value: 1.0 },
+                    speed: { value: 3.0 }
+                });
+                const torus = new THREE.Mesh(torusGeometry, electricMaterial);
+                torus.position.set(5, 0, 0);
+                torus.castShadow = true;
+                this.scene.add(torus);
+
+                // 4. Ground Plane
+                const groundGeometry = new THREE.PlaneGeometry(20, 20);
+                const groundMaterial = new THREE.MeshPhongMaterial({ color: 0x333333 });
+                const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+                ground.rotation.x = -Math.PI / 2;
+                ground.position.y = -2;
+                ground.receiveShadow = true;
+                this.scene.add(ground);
+
+                // Add physics ground
+                this.physicsEngine.createStaticBody(groundGeometry, { x: 0, y: -2, z: 0 }, 'default');
+
+                // Store objects for interaction
+                this.demoObjects = [cube, sphere, torus];
+            }
+
+            animate() {
+                requestAnimationFrame(() => this.animate());
+
+                const deltaTime = this.clock.getDelta();
+
+                // Update all systems
+                this.updateSystems(deltaTime);
+                
+                // Update physics
+                this.physicsEngine.update(deltaTime);
+                
+                // Update shaders
+                this.shaderManager.materials.forEach(material => {
+                    this.shaderManager.animateMaterial(material, deltaTime);
+                });
+                
+                // Update effects
+                this.effectsManager.update(deltaTime);
+                
+                // Update performance
+                this.performanceManager.update();
+                
+                // Update input
+                this.inputSystem.update();
+                
+                // Handle input
+                this.handleInput();
+                
+                // Update object positions from physics
+                this.updatePhysicsObjects();
+                
+                // Render
+                if (this.postProcessing) {
+                    this.postProcessing.render();
+                } else {
+                    this.renderer.render(this.scene, this.camera);
+                }
+            }
+
+            updateSystems(deltaTime) {
+                // Rotate demo objects
+                this.demoObjects.forEach((obj, index) => {
+                    obj.rotation.y += deltaTime * (0.5 + index * 0.2);
+                    obj.rotation.x += deltaTime * 0.1;
+                });
+            }
+
+            updatePhysicsObjects() {
+                this.demoObjects.forEach(obj => {
+                    if (obj.userData.physicsBody) {
+                        const physicsPos = this.physicsEngine.getPosition(obj.userData.physicsBody.id);
+                        if (physicsPos) {
+                            obj.position.set(physicsPos.x, physicsPos.y, physicsPos.z);
+                        }
+                    }
+                });
+            }
+
+            handleInput() {
+                // Simple camera movement
+                if (this.inputSystem.getKey('KeyW')) {
+                    this.camera.position.z -= 0.1;
+                }
+                if (this.inputSystem.getKey('KeyS')) {
+                    this.camera.position.z += 0.1;
+                }
+                if (this.inputSystem.getKey('KeyA')) {
+                    this.camera.position.x -= 0.1;
+                }
+                if (this.inputSystem.getKey('KeyD')) {
+                    this.camera.position.x += 0.1;
+                }
+                
+                // Mouse wheel zoom
+                const wheel = this.inputSystem.getMouseWheel();
+                if (wheel !== 0) {
+                    this.camera.position.z += wheel * 0.01;
+                }
+            }
+
+            addStatus(message, type) {
+                const statusDiv = document.createElement('div');
+                statusDiv.className = `status ${type}`;
+                statusDiv.textContent = message;
+                this.statusDiv.appendChild(statusDiv);
+                
+                // Keep only last 10 status messages
+                while (this.statusDiv.children.length > 10) {
+                    this.statusDiv.removeChild(this.statusDiv.firstChild);
+                }
+            }
+        }
+
+        // Start demo when page loads
+        window.addEventListener('load', () => {
+            new UnityStyleDemo();
+        });
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            if (window.demo) {
+                window.demo.camera.aspect = window.innerWidth / window.innerHeight;
+                window.demo.camera.updateProjectionMatrix();
+                window.demo.renderer.setSize(window.innerWidth, window.innerHeight);
+            }
+        });
+    </script>
+</body>
+</html>
