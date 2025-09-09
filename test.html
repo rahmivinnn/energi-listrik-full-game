@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Energy Quest</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .test-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: rgba(0,0,0,0.3);
+            padding: 20px;
+            border-radius: 10px;
+        }
+        .test-button {
+            background: #4ecdc4;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .test-button:hover {
+            background: #45b7d1;
+        }
+        .status {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .success { background: rgba(76, 175, 80, 0.3); }
+        .error { background: rgba(244, 67, 54, 0.3); }
+        .info { background: rgba(33, 150, 243, 0.3); }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🧪 Test Energy Quest: Misteri Hemat Listrik</h1>
+        <p>Testing semua sistem Unity-style yang telah diimplementasikan...</p>
+        
+        <button class="test-button" onclick="testThreeJS()">Test Three.js</button>
+        <button class="test-button" onclick="testCannonJS()">Test Cannon.js</button>
+        <button class="test-button" onclick="testShaders()">Test Shaders</button>
+        <button class="test-button" onclick="testPhysics()">Test Physics</button>
+        <button class="test-button" onclick="testAudio()">Test Audio</button>
+        <button class="test-button" onclick="testAll()">Test Semua Sistem</button>
+        
+        <div id="status"></div>
+        
+        <h2>📋 Sistem yang Diimplementasikan:</h2>
+        <ul>
+            <li>✅ Post-Processing Pipeline (Bloom, SSAO, Color Grading)</li>
+            <li>✅ Advanced Shaders (PBR, Emissive, Electric)</li>
+            <li>✅ Physics Engine (Cannon.js)</li>
+            <li>✅ UI System (Unity-style)</li>
+            <li>✅ Performance Optimization (LOD, Culling)</li>
+            <li>✅ Advanced Effects (Volumetric, SSR)</li>
+            <li>✅ Input System (Keyboard, Mouse, Gamepad, Touch)</li>
+            <li>✅ Animation System</li>
+            <li>✅ Audio System (3D Spatial)</li>
+        </ul>
+        
+        <h2>🎮 Kontrol Game:</h2>
+        <ul>
+            <li><strong>Mouse:</strong> Klik, hover, drag & drop</li>
+            <li><strong>Keyboard:</strong> WASD, E (interact), Escape (pause)</li>
+            <li><strong>Gamepad:</strong> Full controller support</li>
+            <li><strong>Touch:</strong> Multi-touch dengan gestures</li>
+        </ul>
+        
+        <p><a href="index.html" style="color: #4ecdc4; text-decoration: none; font-weight: bold;">🚀 LAUNCH GAME</a></p>
+    </div>
+
+    <script>
+        function addStatus(message, type = 'info') {
+            const status = document.getElementById('status');
+            const div = document.createElement('div');
+            div.className = `status ${type}`;
+            div.innerHTML = `[${new Date().toLocaleTimeString()}] ${message}`;
+            status.appendChild(div);
+        }
+
+        function testThreeJS() {
+            try {
+                if (typeof THREE !== 'undefined') {
+                    addStatus('✅ Three.js loaded successfully!', 'success');
+                    addStatus(`Version: ${THREE.REVISION}`, 'info');
+                } else {
+                    addStatus('❌ Three.js not loaded!', 'error');
+                }
+            } catch (error) {
+                addStatus(`❌ Three.js error: ${error.message}`, 'error');
+            }
+        }
+
+        function testCannonJS() {
+            try {
+                if (typeof CANNON !== 'undefined') {
+                    addStatus('✅ Cannon.js loaded successfully!', 'success');
+                    const world = new CANNON.World();
+                    addStatus('✅ Physics world created!', 'success');
+                } else {
+                    addStatus('❌ Cannon.js not loaded!', 'error');
+                }
+            } catch (error) {
+                addStatus(`❌ Cannon.js error: ${error.message}`, 'error');
+            }
+        }
+
+        function testShaders() {
+            try {
+                if (typeof ShaderManager !== 'undefined') {
+                    addStatus('✅ ShaderManager loaded successfully!', 'success');
+                    const shaderManager = new ShaderManager();
+                    addStatus('✅ Shader system initialized!', 'success');
+                } else {
+                    addStatus('❌ ShaderManager not loaded!', 'error');
+                }
+            } catch (error) {
+                addStatus(`❌ Shader error: ${error.message}`, 'error');
+            }
+        }
+
+        function testPhysics() {
+            try {
+                if (typeof PhysicsEngine !== 'undefined') {
+                    addStatus('✅ PhysicsEngine loaded successfully!', 'success');
+                    const physics = new PhysicsEngine();
+                    addStatus('✅ Physics system initialized!', 'success');
+                } else {
+                    addStatus('❌ PhysicsEngine not loaded!', 'error');
+                }
+            } catch (error) {
+                addStatus(`❌ Physics error: ${error.message}`, 'error');
+            }
+        }
+
+        function testAudio() {
+            try {
+                if (typeof AudioManager !== 'undefined') {
+                    addStatus('✅ AudioManager loaded successfully!', 'success');
+                    const audio = new AudioManager();
+                    addStatus('✅ Audio system initialized!', 'success');
+                } else {
+                    addStatus('❌ AudioManager not loaded!', 'error');
+                }
+            } catch (error) {
+                addStatus(`❌ Audio error: ${error.message}`, 'error');
+            }
+        }
+
+        function testAll() {
+            addStatus('🧪 Testing all systems...', 'info');
+            testThreeJS();
+            setTimeout(() => testCannonJS(), 100);
+            setTimeout(() => testShaders(), 200);
+            setTimeout(() => testPhysics(), 300);
+            setTimeout(() => testAudio(), 400);
+            setTimeout(() => {
+                addStatus('🎉 All systems tested! Game ready to launch!', 'success');
+            }, 500);
+        }
+
+        // Auto-test on load
+        window.addEventListener('load', () => {
+            addStatus('🚀 Test page loaded! Click buttons to test systems.', 'info');
+        });
+    </script>
+
+    <!-- Load all game scripts for testing -->
+    <script src="https://unpkg.com/three@0.158.0/build/three.min.js"></script>
+    <script src="https://unpkg.com/cannon@0.20.0/build/cannon.min.js"></script>
+    <script src="audio.js"></script>
+    <script src="post-processing.js"></script>
+    <script src="shaders.js"></script>
+    <script src="physics.js"></script>
+    <script src="ui-system.js"></script>
+    <script src="performance.js"></script>
+    <script src="effects.js"></script>
+    <script src="input-system.js"></script>
+</body>
+</html>

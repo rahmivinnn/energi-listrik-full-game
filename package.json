@@ -1,0 +1,32 @@
+{
+  "name": "energy-quest-unity-game",
+  "version": "1.0.0",
+  "description": "Energy Quest: Misteri Hemat Listrik - Unity-style AAA educational game",
+  "main": "index.html",
+  "scripts": {
+    "start": "python3 -m http.server 8000",
+    "dev": "python3 -m http.server 8000",
+    "build": "echo 'No build step required for static files'",
+    "deploy": "vercel --prod"
+  },
+  "keywords": [
+    "game",
+    "education",
+    "threejs",
+    "unity",
+    "physics",
+    "3d",
+    "interactive",
+    "electricity",
+    "puzzle"
+  ],
+  "author": "Energy Quest Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/energy-quest.git"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}
